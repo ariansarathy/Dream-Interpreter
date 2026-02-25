@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dream Interpreter</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+      animation: fade-in 0.8s ease-out forwards;
+    }
+    .spinner {
+      border: 3px solid rgba(255,255,255,0.3);
+      border-top: 3px solid white;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+
+<body class="bg-gradient-to-b from-indigo-950 via-purple-900 to-blue-900 text-white">
+  <div id="app"></div>
+
+  <script>
+    const TRANSLATIONS = {
+      "en-US": {
+        title: "Dream Interpreter",
+        subtitle: "Share your dream, discover its meaning ✨",
+        label: "Tell me about your dream...",
+        placeholder: "Describe your dream in as much detail as you can remember...",
+        button: "Interpret Dream",
+        loading: "Interpreting your dream...",
+        themes: "Main Themes",
+        emotions: "Emotional Atmosphere",
+        symbols: "Dream Symbols",
+        insight: "Personal Insight",
+        guidance: "Guidance for Reflection"
+      }
+    };
+
+    const t = (k) => TRANSLATIONS["en-US"][k];
+
+    let dreamText = "";
+    let interpretation = null;
+    let isLoading = false;
+    let error = null;
+
+    function render() {
+      document.getElementById("app").innerHTML = `
+        <div class="max-w-4xl mx-auto p-6 pt-12">
+          <div class="text-center mb-10 animate-fade-in">
+            <h1 class="text-4xl font-light mb-2">${t("title")}</h1>
+            <p class="text-purple-200">${t("subtitle")}</p>
+          </div>
+
+          <div class="bg-white/10 p-6 rounded-xl border border-white/20">
+            <label class="block mb-3 text-purple-200">${t("label")}</label>
+            <textarea
+              id="dreamInput"
+              class="w-full h-40 p-4 rounded-xl bg-white/5 border border-white/10 focus:outline-none"
+              placeholder="${t("placeholder")}"
+            >${dreamText}</textarea>
+
+            <button
+              id="interpretBtn"
+              class="mt-4 w-full py-3 rounded-xl ${
+                isLoading ? "bg-purple-800/50" : "bg-gradient-to-r from-purple-600 to-blue-600"
+              }"
+              ${isLoading || !dreamText.trim() ? "disabled" : ""}
+            >
+              ${
+                isLoading
+                  ? `<div class="flex justify-center items-center gap-2"><div class="spinner"></div>${t("loading")}</div>`
+                  : t("button")
+              }
+            </button>
+
+            ${error ? `<p class="mt-4 text-red-300">${error}</p>` : ""}
+          </div>
+
+          ${
+            interpretation
+              ? `
+              <div class="mt-10 space-y-6 animate-fade-in">
+                <section class="bg-white/10 p-6 rounded-xl">
+                  <h2 class="text-xl mb-3">${t("themes")}</h2>
+                  ${interpretation.mainThemes.map(t => `<span class="inline-block bg-purple-500/30 px-3 py-1 rounded-full mr-2">${t}</span>`).join("")}
+                </section>
+
+                <section class="bg-white/10 p-6 rounded-xl">
+                  <h2 class="text-xl mb-3">${t("emotions")}</h2>
+                  <p>${interpretation.emotionalTone}</p>
+                </section>
+
+                <section class="bg-white/10 p-6 rounded-xl">
+                  <h2 class="text-xl mb-3">${t("symbols")}</h2>
+                  ${interpretation.symbols.map(s => `<p><strong>${s.symbol}:</strong> ${s.meaning}</p>`).join("")}
+                </section>
+
+                <section class="bg-white/10 p-6 rounded-xl">
+                  <h2 class="text-xl mb-3">${t("insight")}</h2>
+                  <p>${interpretation.personalInsight}</p>
+                </section>
+
+                <section class="bg-white/10 p-6 rounded-xl">
+                  <h2 class="text-xl mb-3">${t("guidance")}</h2>
+                  <p>${interpretation.guidance}</p>
+                </section>
+              </div>
+            `
+              : ""
+          }
+        </div>
+      `;
+
+      // FIXED: no re-render on input
+      document.getElementById("dreamInput").addEventListener("input", e => {
+        dreamText = e.target.value;
+      });
+
+      document.getElementById("interpretBtn").addEventListener("click", interpretDream);
+    }
+
+    async function interpretDream() {
+      if (!dreamText.trim()) return;
+
+      isLoading = true;
+      error = null;
+      render();
+
+      try {
+        const res = await fetch("/api/interpret", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dream: dreamText })
+        });
+
+        if (!res.ok) throw new Error("Server error");
+
+        interpretation = await res.json();
+      } catch (err) {
+        error = err.message;
+      } finally {
+        isLoading = false;
+        render();
+      }
+    }
+
+    render();
+  </script>
+</body>
+</html>
