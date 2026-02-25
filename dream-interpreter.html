@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dream Interpreter</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes fade-in {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .animate-fade-in {
+      animation: fade-in 0.8s ease-out forwards;
+    }
+
+    @keyframes float-cloud {
+      from {
+        transform: translateX(-100%);
+      }
+      to {
+        transform: translateX(calc(100vw + 100%));
+      }
+    }
+
+    .cloud {
+      position: absolute;
+      background: white;
+      border-radius: 50px;
+      opacity: 0.3;
+      animation: float-cloud linear infinite;
+    }
+
+    .cloud::before,
+    .cloud::after {
+      content: '';
+      position: absolute;
+      background: white;
+      border-radius: 50%;
+    }
+
+    .cloud-1 {
+      width: 100px;
+      height: 40px;
+      top: 15%;
+      animation-duration: 25s;
+      animation-delay: -2s;
+    }
+
+    .cloud-1::before {
+      width: 50px;
+      height: 50px;
+      top: -25px;
+      left: 10px;
+    }
+
+    .cloud-1::after {
+      width: 60px;
+      height: 60px;
+      top: -30px;
+      right: 10px;
+    }
+
+    .cloud-2 {
+      width: 80px;
+      height: 30px;
+      top: 35%;
+      animation-duration: 30s;
+      animation-delay: -10s;
+    }
+
+    .cloud-2::before {
+      width: 40px;
+      height: 40px;
+      top: -20px;
+      left: 10px;
+    }
+
+    .cloud-2::after {
+      width: 50px;
+      height: 50px;
+      top: -25px;
+      right: 10px;
+    }
+
+    .cloud-3 {
+      width: 120px;
+      height: 40px;
+      top: 60%;
+      animation-duration: 35s;
+      animation-delay: -15s;
+    }
+
+    .cloud-3::before {
+      width: 60px;
+      height: 60px;
+      top: -30px;
+      left: 20px;
+    }
+
+    .cloud-3::after {
+      width: 70px;
+      height: 70px;
+      top: -35px;
+      right: 15px;
+    }
+
+    .cloud-4 {
+      width: 90px;
+      height: 35px;
+      top: 75%;
+      animation-duration: 28s;
+      animation-delay: -5s;
+    }
+
+    .cloud-4::before {
+      width: 45px;
+      height: 45px;
+      top: -22px;
+      left: 15px;
+    }
+
+    .cloud-4::after {
+      width: 55px;
+      height: 55px;
+      top: -27px;
+      right: 10px;
+    }
+
+    .cloud-5 {
+      width: 110px;
+      height: 45px;
+      top: 45%;
+      animation-duration: 32s;
+      animation-delay: -20s;
+    }
+
+    .cloud-5::before {
+      width: 55px;
+      height: 55px;
+      top: -27px;
+      left: 15px;
+    }
+
+    .cloud-5::after {
+      width: 65px;
+      height: 65px;
+      top: -32px;
+      right: 15px;
+    }
+
+    .spinner {
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-top: 3px solid white;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script>
+    const TRANSLATIONS = {
+      "en-US": {
+        "dreamInterpreterTitle": "Dream interpreter",
+        "dreamInterpreterSubtitle": "Share your dream, discover its meaning ✨",
+        "dreamInputLabel": "Tell me about your dream...",
+        "dreamInputPlaceholder": "Describe your dream in as much detail as you can remember... ☁️",
+        "interpretingDream": "Interpreting your dream...",
+        "interpretDreamButton": "Interpret dream",
+        "mainThemesTitle": "Main themes",
+        "emotionalAtmosphereTitle": "Emotional atmosphere",
+        "dreamSymbolsTitle": "Dream symbols",
+        "personalInsightTitle": "Personal insight",
+        "guidanceTitle": "Guidance for reflection",
+        "dreamPrompt": "You are a compassionate dream interpreter with expertise in psychology, symbolism, and emotional wellness. Analyze this dream and provide a thoughtful interpretation:\n\nDream: \"{dreamText}\"\n\nPlease respond ONLY with a JSON object (no markdown, no backticks) containing:\n{\n  \"mainThemes\": [\"theme1\", \"theme2\", \"theme3\"],\n  \"emotionalTone\": \"description of the emotional undertones\",\n  \"symbols\": [\n    {\"symbol\": \"symbol1\", \"meaning\": \"meaning1\"},\n    {\"symbol\": \"symbol2\", \"meaning\": \"meaning2\"}\n  ],\n  \"personalInsight\": \"deep personal insight about what this dream might mean for the dreamer\",\n  \"guidance\": \"gentle guidance for reflection or action\"\n}\n\nProvide a warm, supportive interpretation that helps the dreamer understand their subconscious messages."
+      }
+    };
+
+    const locale = 'en-US';
+    const t = (key) => TRANSLATIONS[locale][key];
+
+    let dreamText = '';
+    let interpretation = null;
+    let isLoading = false;
+    let error = null;
+    let savedDreams = [];
+
+    function render() {
+      const app = document.getElementById('app');
+      app.innerHTML = `
+        <div class="min-h-screen bg-gradient-to-b from-indigo-950 via-purple-900 to-blue-900 text-white p-6 pt-12 relative overflow-hidden">
+          <div class="absolute inset-0 pointer-events-none">
+            <div class="cloud cloud-1"></div>
+            <div class="cloud cloud-2"></div>
+            <div class="cloud cloud-3"></div>
+            <div class="cloud cloud-4"></div>
+            <div class="cloud cloud-5"></div>
+          </div>
+          
+          <div class="max-w-4xl mx-auto relative z-10">
+            <div class="text-center mb-12 animate-fade-in">
+              <h1 class="text-4xl font-light tracking-wider bg-gradient-to-r from-purple-300 to-blue-300 bg-clip-text text-transparent mb-4">
+                ${t('dreamInterpreterTitle')}
+              </h1>
+              <p class="text-purple-200 text-lg opacity-80">
+                ${t('dreamInterpreterSubtitle')}
+              </p>
+            </div>
+
+            <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-8 mb-8 shadow-xl border border-white/20">
+              <div class="mb-6">
+                <label class="block text-purple-200 mb-3 text-lg">
+                  ${t('dreamInputLabel')}
+                </label>
+                <textarea
+                  id="dreamInput"
+                  placeholder="${t('dreamInputPlaceholder')}"
+                  class="w-full h-40 bg-white/5 border border-white/10 rounded-xl p-4 text-white placeholder-purple-300/50 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-400/30 transition-all duration-300 resize-none"
+                >${dreamText}</textarea>
+              </div>
+              
+              <button
+                id="interpretBtn"
+                ${isLoading || !dreamText.trim() ? 'disabled' : ''}
+                class="w-full py-3 px-6 rounded-xl font-medium transition-all duration-300 ${
+                  isLoading || !dreamText.trim()
+                    ? 'bg-purple-800/50 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 transform hover:scale-105'
+                } flex items-center justify-center space-x-2"
+              >
+                ${isLoading ? `
+                  <div class="spinner"></div>
+                  <span>${t('interpretingDream')}</span>
+                ` : `
+                  <span>${t('interpretDreamButton')}</span>
+                `}
+              </button>
+              
+              ${error ? `
+                <div class="mt-4 p-4 bg-red-500/20 border border-red-500/50 rounded-lg text-red-200">
+                  ${error}
+                </div>
+              ` : ''}
+            </div>
+
+            ${interpretation ? `
+              <div class="space-y-6 animate-fade-in">
+                <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-white/20">
+                  <h2 class="text-2xl font-light mb-4">${t('mainThemesTitle')}</h2>
+                  <div class="flex flex-wrap gap-3">
+                    ${interpretation.mainThemes.map(theme => `
+                      <span class="bg-purple-500/30 px-4 py-2 rounded-full text-purple-200 border border-purple-400/30">
+                        ${theme}
+                      </span>
+                    `).join('')}
+                  </div>
+                </div>
+
+                <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-white/20">
+                  <h2 class="text-2xl font-light mb-4">${t('emotionalAtmosphereTitle')}</h2>
+                  <p class="text-blue-200 leading-relaxed">${interpretation.emotionalTone}</p>
+                </div>
+
+                <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-white/20">
+                  <h2 class="text-2xl font-light mb-4">${t('dreamSymbolsTitle')}</h2>
+                  <div class="grid gap-4">
+                    ${interpretation.symbols.map(symbol => `
+                      <div class="flex items-start space-x-4">
+                        <div class="bg-purple-500/20 p-3 rounded-lg">
+                          <span class="text-purple-300 font-medium">${symbol.symbol}</span>
+                        </div>
+                        <p class="text-purple-200 flex-1">${symbol.meaning}</p>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+
+                <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-white/20">
+                  <h2 class="text-2xl font-light mb-4">${t('personalInsightTitle')}</h2>
+                  <p class="text-indigo-200 leading-relaxed text-lg">${interpretation.personalInsight}</p>
+                </div>
+
+                <div class="bg-gradient-to-r from-purple-800/30 to-blue-800/30 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-white/20">
+                  <h2 class="text-2xl font-light mb-4">${t('guidanceTitle')}</h2>
+                  <p class="text-yellow-100 leading-relaxed">${interpretation.guidance}</p>
+                </div>
+              </div>
+            ` : ''}
+
+            ${savedDreams.length > 0 ? `
+              <div class="mt-8 text-center">
+                <button
+                  id="downloadBtn"
+                  class="bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white px-8 py-3 rounded-xl font-medium transform hover:scale-105 transition-all duration-300"
+                >
+                  Download All Dreams (${savedDreams.length})
+                </button>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+
+      // Add event listeners
+      const input = document.getElementById('dreamInput');
+      if (input) {
+        input.addEventListener('input', (e) => {
+          dreamText = e.target.value;
+          render();
+        });
+      }
+
+      const btn = document.getElementById('interpretBtn');
+      if (btn) {
+        btn.addEventListener('click', interpretDream);
+      }
+
+      const downloadBtn = document.getElementById('downloadBtn');
+      if (downloadBtn) {
+        downloadBtn.addEventListener('click', downloadAllDreams);
+      }
+    }
+
+    async function interpretDream() {
+      if (!dreamText.trim()) return;
+      
+      isLoading = true;
+      error = null;
+      render();
+      
+      try {
+        const prompt = t('dreamPrompt').replace('{dreamText}', dreamText);
+
+        const res = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 1000,
+            messages: [{ role: "user", content: prompt }]
+          })
+        });
+        
+        const data = await res.json();
+        const text = data.content.map(i => i.text || "").join("");
+        const clean = text.replace(/```json|```/g, "").trim();
+        const parsedResponse = JSON.parse(clean);
+        
+        interpretation = parsedResponse;
+        savedDreams.push({
+          dreamText,
+          interpretation: parsedResponse,
+          timestamp: new Date().toISOString()
+        });
+      } catch (err) {
+        error = `Error: ${err.message}`;
+        console.error('Error interpreting dream:', err);
+      } finally {
+        isLoading = false;
+        render();
+      }
+    }
+
+    function downloadAllDreams() {
+      const content = savedDreams.map((dream, index) => {
+        const date = new Date(dream.timestamp).toLocaleString();
+        return `
+═══════════════════════════════════════════════════════════
+DREAM ${index + 1} - ${date}
+═══════════════════════════════════════════════════════════
+
+DREAM DESCRIPTION:
+${dream.dreamText}
+
+MAIN THEMES:
+${dream.interpretation.mainThemes.map(t => `• ${t}`).join('\n')}
+
+EMOTIONAL ATMOSPHERE:
+${dream.interpretation.emotionalTone}
+
+DREAM SYMBOLS:
+${dream.interpretation.symbols.map(s => `• ${s.symbol}: ${s.meaning}`).join('\n')}
+
+PERSONAL INSIGHT:
+${dream.interpretation.personalInsight}
+
+GUIDANCE FOR REFLECTION:
+${dream.interpretation.guidance}
+
+`;
+      }).join('\n');
+
+      const blob = new Blob([content], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `dream-interpretations-${new Date().toISOString().split('T')[0]}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // Initial render
+    render();
+  </script>
+</body>
+</html>
