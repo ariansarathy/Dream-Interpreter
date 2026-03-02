@@ -137,6 +137,7 @@
 
       isLoading = true;
       error = null;
+      interpretation = null;
       render();
 
       try {
@@ -146,12 +147,23 @@
           body: JSON.stringify({ dream: dreamText })
         });
 
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Server error");
+        let data;
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          data = await res.json();
+        } else {
+          const text = await res.text();
+          throw new Error(`Server error: ${res.status} ${res.statusText}${text ? ' - ' + text.slice(0, 50) : ''}`);
+        }
+
+        if (!res.ok) throw new Error(data.error || `Server error (${res.status})`);
 
         interpretation = data;
       } catch (err) {
-        error = err.message;
+        console.error("Dream interpretation failed:", err);
+        error = err.message === "Failed to fetch"
+          ? "Network error: Could not connect to the server."
+          : err.message;
       } finally {
         isLoading = false;
         render();
