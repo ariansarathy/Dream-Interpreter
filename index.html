@@ -123,9 +123,10 @@
         </div>
       `;
 
-      // FIXED: no re-render on input
+      // FIXED: no re-render on input, but update button state
       document.getElementById("dreamInput").addEventListener("input", e => {
         dreamText = e.target.value;
+        document.getElementById("interpretBtn").disabled = !dreamText.trim() || isLoading;
       });
 
       document.getElementById("interpretBtn").addEventListener("click", interpretDream);
@@ -145,9 +146,10 @@
           body: JSON.stringify({ dream: dreamText })
         });
 
-        if (!res.ok) throw new Error("Server error");
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Server error");
 
-        interpretation = await res.json();
+        interpretation = data;
       } catch (err) {
         error = err.message;
       } finally {
